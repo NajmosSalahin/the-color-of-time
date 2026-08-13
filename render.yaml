@@ -1,0 +1,9 @@
+services:
+  - type: static_site
+    name: the-color-of-time
+    runtime: node
+    buildCommand: npm install && npm run build
+    publishPath: dist
+    repo: https://github.com/NajmosSalahin/the-color-of-time
+    branch: main
+    healthCheckPath: /
