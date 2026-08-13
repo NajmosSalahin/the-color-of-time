@@ -38,9 +38,8 @@ export default function Clock({ now, use12h, hexTime, pomodoro }: ClockProps) {
   const [hh, mm, ss] = text.split(':')
   const darkHour = useMemo(() => isNearBlack(hexTime), [hexTime])
 
-  const ringRadius = 49
-  const ringCircumference = 2 * Math.PI * ringRadius
-  const ringOffset = ringCircumference * (1 - (pomodoro?.progress ?? 0))
+  /* progress is 0..1; pathLength 100 keeps the dash math unit-free */
+  const ringOffset = 100 * (1 - (pomodoro?.progress ?? 0))
 
   return (
     <div className="pointer-events-none flex select-none flex-col items-center">
@@ -51,30 +50,38 @@ export default function Clock({ now, use12h, hexTime, pomodoro }: ClockProps) {
           className={`led-bloom absolute -inset-x-[16%] -inset-y-[26%] ${darkHour ? 'is-off' : ''}`}
         />
 
-        {/* pomodoro progress ring — always a whisper, only visible when active */}
+        {/* pomodoro progress ring — an ellipse wrapping the whole readout,
+            a whisper of hairline + hex arc; visible only while running */}
         <svg
           aria-hidden
-          className={`absolute -inset-[5%] rotate-[-90deg] transition-opacity duration-500 ${pomodoro?.active ? 'opacity-100' : 'opacity-0'}`}
-          viewBox="0 0 100 100"
+          className={`absolute -inset-[5%] h-[110%] w-[110%] transition-opacity duration-500 ${pomodoro?.active ? 'opacity-100' : 'opacity-0'}`}
+          viewBox="0 0 560 100"
+          preserveAspectRatio="none"
         >
-          <circle
-            cx="50"
+          <ellipse
+            cx="280"
             cy="50"
-            r={ringRadius}
+            rx="272"
+            ry="46"
             fill="none"
             stroke="var(--color-hairline)"
-            strokeWidth="1"
+            strokeWidth="2.2"
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
             opacity="0.9"
           />
-          <circle
-            cx="50"
+          <ellipse
+            cx="280"
             cy="50"
-            r={ringRadius}
+            rx="272"
+            ry="46"
             fill="none"
             stroke={`color-mix(in srgb, ${hexTime} 55%, transparent)`}
-            strokeWidth="1.6"
+            strokeWidth="2.8"
             strokeLinecap="round"
-            strokeDasharray={ringCircumference}
+            vectorEffect="non-scaling-stroke"
+            pathLength={100}
+            strokeDasharray="100"
             strokeDashoffset={ringOffset}
             style={{ transition: 'stroke-dashoffset 800ms linear, stroke 600ms ease' }}
           />
