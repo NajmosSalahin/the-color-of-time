@@ -1,18 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { formattedTime } from '../utils/time'
-import type { PomodoroMode, PomodoroStatus } from '../hooks/usePomodoro'
+import type { PomodoroMode } from '../hooks/usePomodoro'
 import { MODE_LABELS } from '../hooks/usePomodoro'
-import { useContinuousRing } from '../hooks/useContinuousRing'
 import HexBadge from './HexBadge'
 
 interface PomodoroView {
   active: boolean
   mode: PomodoroMode
   remaining: string
-  progress: number
-  status: PomodoroStatus
-  endAt: number | null
-  durationMs: number
 }
 
 interface ClockProps {
@@ -42,15 +37,6 @@ export default function Clock({ now, use12h, hexTime, pomodoro }: ClockProps) {
   const [hh, mm, ss] = text.split(':')
   const darkHour = useMemo(() => isNearBlack(hexTime), [hexTime])
 
-  const ringRef = useRef<SVGPathElement | null>(null)
-  useContinuousRing(
-    ringRef,
-    pomodoro?.status ?? 'idle',
-    pomodoro?.endAt ?? null,
-    pomodoro?.durationMs ?? 0,
-    pomodoro?.progress ?? 0,
-  )
-
   return (
     <div className="pointer-events-none flex select-none flex-col items-center">
       <div className="relative">
@@ -59,47 +45,6 @@ export default function Clock({ now, use12h, hexTime, pomodoro }: ClockProps) {
           aria-hidden
           className={`led-bloom absolute -inset-x-[16%] -inset-y-[26%] ${darkHour ? 'is-off' : ''}`}
         />
-
-        {/* pomodoro progress ring — an ellipse wrapping the whole readout,
-            a whisper of hairline + hex arc; visible only while running */}
-        <svg
-          aria-hidden
-          className={`absolute -inset-[5%] h-[110%] w-[110%] transition-opacity duration-500 ${pomodoro?.active ? 'opacity-100' : 'opacity-0'}`}
-          viewBox="0 0 560 100"
-          preserveAspectRatio="none"
-        >
-          <ellipse
-            cx="280"
-            cy="50"
-            rx="272"
-            ry="46"
-            fill="none"
-            stroke="var(--color-dial)"
-            strokeWidth="2.4"
-            strokeLinecap="butt"
-            vectorEffect="non-scaling-stroke"
-            opacity="0.9"
-          />
-          {/* arc path starts at 12 o'clock and sweeps clockwise — the drain
-              is written into the geometry, nothing for the browser to infer.
-              Negative dashoffset grows the gap clockwise from the seam. */}
-          <path
-            ref={ringRef}
-            d="M 280 4 A 276 46 0 1 1 279.6 4"
-            fill="none"
-            stroke={`color-mix(in srgb, ${hexTime} 60%, white)`}
-            strokeWidth="3.2"
-            strokeLinecap="butt"
-            vectorEffect="non-scaling-stroke"
-            pathLength={100}
-            strokeDasharray="100"
-            strokeDashoffset="0"
-            style={{
-              filter: `drop-shadow(0 0 5px color-mix(in srgb, ${hexTime} 50%, transparent))`,
-              transition: 'stroke 600ms ease',
-            }}
-          />
-        </svg>
 
         {/* the digits */}
         <div

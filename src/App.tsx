@@ -78,19 +78,8 @@ export default function App() {
       active: pomodoro.status !== 'idle',
       mode: pomodoro.mode,
       remaining: pomodoro.remaining,
-      progress: pomodoro.progress,
-      status: pomodoro.status,
-      endAt: pomodoro.endAt,
-      durationMs: pomodoro.durationMs,
     }),
-    [
-      pomodoro.status,
-      pomodoro.mode,
-      pomodoro.remaining,
-      pomodoro.progress,
-      pomodoro.endAt,
-      pomodoro.durationMs,
-    ],
+    [pomodoro.status, pomodoro.mode, pomodoro.remaining],
   )
 
   return (
