@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Alarm } from '../hooks/useAlarms'
+import { startAlarmRing } from '../utils/audio'
 import Panel from './Panel'
-import { EditIcon, TrashIcon } from './icons'
+import { BellIcon, EditIcon, TrashIcon } from './icons'
 
 interface AlarmPanelProps {
   open: boolean
@@ -36,6 +37,20 @@ export default function AlarmPanel({
 }: AlarmPanelProps) {
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT)
   const [timeError, setTimeError] = useState(false)
+  const stopTestRing = useRef<(() => void) | null>(null)
+
+  useEffect(() => () => stopTestRing.current?.(), [])
+
+  /* play the ring briefly so the volume can be judged before an alarm is set */
+  const testRing = () => {
+    stopTestRing.current?.()
+    const stop = startAlarmRing()
+    stopTestRing.current = stop
+    window.setTimeout(() => {
+      stop()
+      if (stopTestRing.current === stop) stopTestRing.current = null
+    }, 1800)
+  }
 
   const validTime = useMemo(
     () => /^([01]\d|2[0-3]):[0-5]\d$/.test(draft.time),
@@ -158,6 +173,13 @@ export default function AlarmPanel({
                     a.enabled ? 'translate-x-[1.05rem]' : 'translate-x-[0.15rem]'
                   }`}
                 />
+              </button>
+              <button
+                aria-label={`Test alarm ${a.time}`}
+                onClick={testRing}
+                className="rounded-sm p-1.5 text-dim transition-colors hover:text-phosphor"
+              >
+                <BellIcon size={15} />
               </button>
               <button
                 aria-label={`Edit alarm ${a.time}`}

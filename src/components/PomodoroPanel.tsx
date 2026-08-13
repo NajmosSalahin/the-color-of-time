@@ -1,5 +1,5 @@
 import type { PomodoroSettings } from '../hooks/usePomodoro'
-import { MODE_LABELS } from '../hooks/usePomodoro'
+import { MODE_LABELS, MAX_CYCLE_LENGTH, MIN_CYCLE_LENGTH } from '../hooks/usePomodoro'
 import Panel from './Panel'
 import { MinusIcon, PlusIcon } from './icons'
 
@@ -11,11 +11,13 @@ interface PomodoroPanelProps {
   remaining: string
   completed: number
   cycle: number
+  cycleLength: number
   onStart: () => void
   onPause: () => void
   onReset: () => void
   onSkip: () => void
   onSetDuration: (which: keyof PomodoroSettings, minutes: number) => void
+  onSetCycleLength: (n: number) => void
   onClose: () => void
 }
 
@@ -33,14 +35,19 @@ export default function PomodoroPanel({
   remaining,
   completed,
   cycle,
+  cycleLength,
   onStart,
   onPause,
   onReset,
   onSkip,
   onSetDuration,
+  onSetCycleLength,
   onClose,
 }: PomodoroPanelProps) {
   const running = status === 'running'
+
+  const ordinal = (n: number): string =>
+    `${n}${n === 2 ? 'nd' : n === 3 ? 'rd' : 'th'}`
 
   return (
     <Panel open={open} title="Focus timer" meta={`${completed} done`} onClose={onClose}>
@@ -49,8 +56,11 @@ export default function PomodoroPanel({
           <p className="eyebrow text-dim">Now</p>
           <p className="mt-2 text-sm text-phosphor">{MODE_LABELS[mode]}</p>
           <p className="mt-1 text-4xl tracking-[0.1em] text-white">{remaining}</p>
-          <div className="mt-4 flex gap-1.5" aria-label={`${cycle} of 4 sessions in this cycle`}>
-            {[0, 1, 2, 3].map((i) => (
+          <div
+            className="mt-4 flex gap-1.5"
+            aria-label={`${cycle} of ${cycleLength} sessions in this cycle`}
+          >
+            {Array.from({ length: cycleLength }, (_, i) => i).map((i) => (
               <span
                 key={i}
                 className="h-1 flex-1 rounded-full transition-colors duration-500"
@@ -62,7 +72,7 @@ export default function PomodoroPanel({
             ))}
           </div>
           <p className="mt-2 text-xs text-dim">
-            Every 4th session is a long break. The timer runs while this tab is open.
+            The timer runs while this tab is open.
           </p>
         </section>
 
@@ -94,6 +104,37 @@ export default function PomodoroPanel({
           >
             Reset
           </button>
+        </section>
+
+        <section className="border-t border-hairline pt-5">
+          <p className="eyebrow text-dim">Cycle</p>
+          <div className="mt-3 flex items-center justify-between rounded-sm border border-hairline px-3 py-2">
+            <span className="text-sm text-phosphor">Long break every</span>
+            <div className="flex items-center gap-1">
+              <button
+                aria-label="Decrease long break frequency"
+                onClick={() => onSetCycleLength(cycleLength - 1)}
+                disabled={cycleLength <= MIN_CYCLE_LENGTH}
+                className="rounded-sm p-1.5 text-dim transition-colors hover:text-phosphor disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <MinusIcon size={13} />
+              </button>
+              <span className="w-16 text-center text-sm text-white">
+                {cycleLength} {cycleLength === 1 ? 'session' : 'sessions'}
+              </span>
+              <button
+                aria-label="Increase long break frequency"
+                onClick={() => onSetCycleLength(cycleLength + 1)}
+                disabled={cycleLength >= MAX_CYCLE_LENGTH}
+                className="rounded-sm p-1.5 text-dim transition-colors hover:text-phosphor disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <PlusIcon size={13} />
+              </button>
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-dim">
+            Every {ordinal(cycleLength)} work session is a long break.
+          </p>
         </section>
 
         <section className="border-t border-hairline pt-5">

@@ -22,12 +22,17 @@ export interface PomodoroState {
   pausedRemaining: number | null
   /** Completed work sessions, all time. */
   completed: number
-  /** Work sessions finished in the current 4-session cycle (0-3). */
+  /** Work sessions finished in the current cycle (0 to cycleLength-1). */
   cycle: number
+  /** Work sessions between long breaks (2-8). */
+  cycleLength: number
 }
 
 const STORAGE_KEY = 'big-clock.pomodoro.v1'
 export const DEFAULT_SETTINGS: PomodoroSettings = { work: 25, short: 5, long: 15 }
+export const DEFAULT_CYCLE_LENGTH = 4
+export const MIN_CYCLE_LENGTH = 2
+export const MAX_CYCLE_LENGTH = 8
 
 export const MODE_LABELS: Record<PomodoroMode, string> = {
   work: 'Work',
@@ -36,6 +41,9 @@ export const MODE_LABELS: Record<PomodoroMode, string> = {
 }
 
 const clampMinutes = (n: number): number => Math.min(120, Math.max(1, Math.round(n)))
+
+const clampCycleLength = (n: number): number =>
+  Math.min(MAX_CYCLE_LENGTH, Math.max(MIN_CYCLE_LENGTH, Math.round(n)))
 
 function loadState(): PomodoroState {
   const fresh: PomodoroState = {
@@ -46,6 +54,7 @@ function loadState(): PomodoroState {
     pausedRemaining: null,
     completed: 0,
     cycle: 0,
+    cycleLength: DEFAULT_CYCLE_LENGTH,
   }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -62,6 +71,10 @@ function loadState(): PomodoroState {
     if (typeof parsed.endAt === 'number') fresh.endAt = parsed.endAt
     if (typeof parsed.completed === 'number') fresh.completed = parsed.completed
     if (typeof parsed.cycle === 'number') fresh.cycle = parsed.cycle
+    if (typeof parsed.cycleLength === 'number') {
+      fresh.cycleLength = clampCycleLength(parsed.cycleLength)
+    }
+    fresh.cycle = Math.min(fresh.cycle, fresh.cycleLength - 1)
     fresh.settings = {
       work: clampMinutes(parsed.settings?.work ?? DEFAULT_SETTINGS.work),
       short: clampMinutes(parsed.settings?.short ?? DEFAULT_SETTINGS.short),
@@ -106,7 +119,7 @@ export function usePomodoro(now: Date) {
       let nextMode: PomodoroMode = 'work'
       if (s.mode === 'work') {
         completed += 1
-        cycle = (cycle + 1) % 4
+        cycle = (cycle + 1) % s.cycleLength
         nextMode = cycle === 0 ? 'long' : 'short'
       }
       return {
@@ -196,6 +209,17 @@ export function usePomodoro(now: Date) {
     }))
   }, [])
 
+  const setCycleLength = useCallback((n: number) => {
+    setState((s) => {
+      const cycleLength = clampCycleLength(n)
+      return {
+        ...s,
+        cycleLength,
+        cycle: Math.min(s.cycle, cycleLength - 1),
+      }
+    })
+  }, [])
+
   const remainingSeconds =
     status === 'running' && endAt !== null
       ? Math.max(0, endAt - now.getTime()) / 1000
@@ -214,6 +238,7 @@ export function usePomodoro(now: Date) {
     settings,
     completed: state.completed,
     cycle: state.cycle,
+    cycleLength: state.cycleLength,
     endAt,
     durationMs,
     remaining: minutesToLabel(remainingSeconds),
@@ -223,5 +248,6 @@ export function usePomodoro(now: Date) {
     reset,
     skip,
     setDuration,
+    setCycleLength,
   }
 }

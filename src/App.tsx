@@ -149,11 +149,13 @@ export default function App() {
         remaining={pomodoro.remaining}
         completed={pomodoro.completed}
         cycle={pomodoro.cycle}
+        cycleLength={pomodoro.cycleLength}
         onStart={pomodoro.start}
         onPause={pomodoro.pause}
         onReset={pomodoro.reset}
         onSkip={pomodoro.skip}
         onSetDuration={pomodoro.setDuration}
+        onSetCycleLength={pomodoro.setCycleLength}
         onClose={() => setPanel(null)}
       />
       <RingingModal

@@ -83,29 +83,38 @@ export function useAlarms(now: Date) {
     return true
   })
 
-  if (due) {
+  /* a snoozed alarm re-rings when its snooze window expires — the alarm's
+     minute is long gone by then, so this triggers on the window alone */
+  const snoozedOverdue = alarms.find(
+    (a) => snoozes[a.id] !== undefined && snoozes[a.id] <= now.getTime(),
+  )
+
+  const fire = (a: Alarm): void => {
     setSnoozes((s) => {
       const next = { ...s }
-      delete next[due.id]
+      delete next[a.id]
       return next
     })
     setAlarms((list) =>
-      list.map((a) =>
-        a.id === due.id
+      list.map((x) =>
+        x.id === a.id
           ? {
-              ...a,
+              ...x,
               lastFired: day,
-              enabled: a.repeat === 'once' ? false : a.enabled,
+              enabled: x.repeat === 'once' ? false : x.enabled,
             }
-          : a,
+          : x,
       ),
     )
     setRinging({
-      alarmId: due.id,
-      time: due.time,
-      title: due.label || `Alarm ${due.time}`,
+      alarmId: a.id,
+      time: a.time,
+      title: a.label || `Alarm ${a.time}`,
     })
   }
+
+  if (due) fire(due)
+  else if (snoozedOverdue) fire(snoozedOverdue)
 
   const addAlarm = (time: string, label: string, repeat: Alarm['repeat']) =>
     setAlarms((list) => [
@@ -120,6 +129,11 @@ export function useAlarms(now: Date) {
 
   const deleteAlarm = (id: string) => {
     setAlarms((list) => list.filter((a) => a.id !== id))
+    setSnoozes((s) => {
+      const next = { ...s }
+      delete next[id]
+      return next
+    })
     setRinging((r) => (r && r.alarmId === id ? null : r))
   }
 
@@ -133,6 +147,12 @@ export function useAlarms(now: Date) {
   const snoozeRinging = () => {
     if (!ringing) return
     setSnoozes((s) => ({ ...s, [ringing.alarmId]: Date.now() + SNOOZE_MS }))
+    // without clearing lastFired the daily re-fire check would swallow the
+    // alarm for the rest of the day — the snooze window should be a delay,
+    // not a cancellation
+    setAlarms((list) =>
+      list.map((a) => (a.id === ringing.alarmId ? { ...a, lastFired: null } : a)),
+    )
     setRinging(null)
   }
 
