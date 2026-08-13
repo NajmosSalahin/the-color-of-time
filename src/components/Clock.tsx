@@ -42,7 +42,7 @@ export default function Clock({ now, use12h, hexTime, pomodoro }: ClockProps) {
   const [hh, mm, ss] = text.split(':')
   const darkHour = useMemo(() => isNearBlack(hexTime), [hexTime])
 
-  const ringRef = useRef<SVGEllipseElement | null>(null)
+  const ringRef = useRef<SVGPathElement | null>(null)
   useContinuousRing(
     ringRef,
     pomodoro?.status ?? 'idle',
@@ -76,24 +76,24 @@ export default function Clock({ now, use12h, hexTime, pomodoro }: ClockProps) {
             fill="none"
             stroke="var(--color-dial)"
             strokeWidth="2.4"
-            strokeLinecap="round"
+            strokeLinecap="butt"
             vectorEffect="non-scaling-stroke"
             opacity="0.9"
           />
-          <ellipse
+          {/* arc path starts at 12 o'clock and sweeps clockwise — the drain
+              is written into the geometry, nothing for the browser to infer.
+              Negative dashoffset grows the gap clockwise from the seam. */}
+          <path
             ref={ringRef}
-            cx="280"
-            cy="50"
-            rx="272"
-            ry="46"
+            d="M 280 4 A 276 46 0 1 1 279.6 4"
             fill="none"
             stroke={`color-mix(in srgb, ${hexTime} 60%, white)`}
             strokeWidth="3.2"
-            strokeLinecap="round"
+            strokeLinecap="butt"
             vectorEffect="non-scaling-stroke"
             pathLength={100}
             strokeDasharray="100"
-            strokeDashoffset="100"
+            strokeDashoffset="0"
             style={{
               filter: `drop-shadow(0 0 5px color-mix(in srgb, ${hexTime} 50%, transparent))`,
               transition: 'stroke 600ms ease',

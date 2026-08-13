@@ -1,8 +1,12 @@
 import { useEffect, type RefObject } from 'react'
 import type { PomodoroStatus } from './usePomodoro'
 
+/**
+ * Negative offset so the gap grows clockwise from the 12 o'clock seam while
+ * the lit tip marches clockwise — one unambiguous drain direction.
+ */
 const toOffset = (p: number): string =>
-  String(100 * (1 - Math.min(1, Math.max(0, p))))
+  String(-(100 * (1 - Math.min(1, Math.max(0, p)))))
 
 /**
  * Drives the pomodoro ring straight from the wall clock via rAF — the arc's
@@ -10,7 +14,7 @@ const toOffset = (p: number): string =>
  * and is always exactly in sync with the countdown, with no per-second steps.
  */
 export function useContinuousRing(
-  ringRef: RefObject<SVGEllipseElement | null>,
+  ringRef: RefObject<SVGElement | null>,
   status: PomodoroStatus,
   endAt: number | null,
   durationMs: number,
