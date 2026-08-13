@@ -18,6 +18,8 @@ export interface PomodoroState {
   status: PomodoroStatus
   /** Absolute timestamp the current phase ends at (drift-free). */
   endAt: number | null
+  /** Remaining ms frozen when the phase was paused, so pause truly stops time. */
+  pausedRemaining: number | null
   /** Completed work sessions, all time. */
   completed: number
   /** Work sessions finished in the current 4-session cycle (0-3). */
@@ -41,6 +43,7 @@ function loadState(): PomodoroState {
     mode: 'work',
     status: 'idle',
     endAt: null,
+    pausedRemaining: null,
     completed: 0,
     cycle: 0,
   }
@@ -63,6 +66,12 @@ function loadState(): PomodoroState {
       work: clampMinutes(parsed.settings?.work ?? DEFAULT_SETTINGS.work),
       short: clampMinutes(parsed.settings?.short ?? DEFAULT_SETTINGS.short),
       long: clampMinutes(parsed.settings?.long ?? DEFAULT_SETTINGS.long),
+    }
+    if (typeof parsed.pausedRemaining === 'number') {
+      fresh.pausedRemaining = Math.min(
+        fresh.settings[fresh.mode] * 60_000,
+        Math.max(0, parsed.pausedRemaining),
+      )
     }
     // a phase that should already have ended while the tab was closed
     if (fresh.status === 'running' && fresh.endAt !== null && fresh.endAt < Date.now()) {
@@ -104,6 +113,7 @@ export function usePomodoro(now: Date) {
         ...s,
         mode: nextMode,
         status: 'running',
+        pausedRemaining: null,
         completed,
         cycle,
         endAt: Date.now() + s.settings[nextMode] * 60_000,
@@ -130,17 +140,40 @@ export function usePomodoro(now: Date) {
   }, [mode])
 
   const start = useCallback(() => {
-    setState((s) => ({
-      ...s,
-      status: 'running',
-      endAt: s.endAt ?? Date.now() + s.settings[s.mode] * 60_000,
-    }))
+    setState((s) => {
+      const resumeFrom =
+        s.status === 'paused' && s.pausedRemaining !== null
+          ? Date.now() + s.pausedRemaining
+          : null
+      return {
+        ...s,
+        status: 'running',
+        pausedRemaining: null,
+        endAt: resumeFrom ?? s.endAt ?? Date.now() + s.settings[s.mode] * 60_000,
+      }
+    })
   }, [])
 
-  const pause = useCallback(() => setState((s) => ({ ...s, status: 'paused' })), [])
+  const pause = useCallback(() => {
+    setState((s) => {
+      if (s.status !== 'running' || s.endAt === null) return s
+      return {
+        ...s,
+        status: 'paused',
+        pausedRemaining: Math.max(0, s.endAt - Date.now()),
+      }
+    })
+  }, [])
 
   const reset = useCallback(() => {
-    setState((s) => ({ ...s, mode: 'work', status: 'idle', endAt: null, cycle: 0 }))
+    setState((s) => ({
+      ...s,
+      mode: 'work',
+      status: 'idle',
+      endAt: null,
+      pausedRemaining: null,
+      cycle: 0,
+    }))
   }, [])
 
   const skip = useCallback(() => {
@@ -150,6 +183,7 @@ export function usePomodoro(now: Date) {
         ...s,
         mode: nextMode,
         status: 'running',
+        pausedRemaining: null,
         endAt: Date.now() + s.settings[nextMode] * 60_000,
       }
     })
@@ -163,9 +197,11 @@ export function usePomodoro(now: Date) {
   }, [])
 
   const remainingSeconds =
-    (status === 'running' || status === 'paused') && endAt !== null
+    status === 'running' && endAt !== null
       ? Math.max(0, endAt - now.getTime()) / 1000
-      : durationMs / 1000
+      : status === 'paused'
+        ? (state.pausedRemaining ?? durationMs) / 1000
+        : durationMs / 1000
   const progress =
     durationMs > 0
       ? Math.min(1, Math.max(0, remainingSeconds / (durationMs / 1000)))
@@ -178,6 +214,8 @@ export function usePomodoro(now: Date) {
     settings,
     completed: state.completed,
     cycle: state.cycle,
+    endAt,
+    durationMs,
     remaining: minutesToLabel(remainingSeconds),
     progress,
     start,

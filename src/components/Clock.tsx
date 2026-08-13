@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { formattedTime } from '../utils/time'
-import type { PomodoroMode } from '../hooks/usePomodoro'
+import type { PomodoroMode, PomodoroStatus } from '../hooks/usePomodoro'
 import { MODE_LABELS } from '../hooks/usePomodoro'
+import { useContinuousRing } from '../hooks/useContinuousRing'
 import HexBadge from './HexBadge'
 
 interface PomodoroView {
@@ -9,6 +10,9 @@ interface PomodoroView {
   mode: PomodoroMode
   remaining: string
   progress: number
+  status: PomodoroStatus
+  endAt: number | null
+  durationMs: number
 }
 
 interface ClockProps {
@@ -38,8 +42,14 @@ export default function Clock({ now, use12h, hexTime, pomodoro }: ClockProps) {
   const [hh, mm, ss] = text.split(':')
   const darkHour = useMemo(() => isNearBlack(hexTime), [hexTime])
 
-  /* progress is 0..1; pathLength 100 keeps the dash math unit-free */
-  const ringOffset = 100 * (1 - (pomodoro?.progress ?? 0))
+  const ringRef = useRef<SVGEllipseElement | null>(null)
+  useContinuousRing(
+    ringRef,
+    pomodoro?.status ?? 'idle',
+    pomodoro?.endAt ?? null,
+    pomodoro?.durationMs ?? 0,
+    pomodoro?.progress ?? 0,
+  )
 
   return (
     <div className="pointer-events-none flex select-none flex-col items-center">
@@ -64,26 +74,30 @@ export default function Clock({ now, use12h, hexTime, pomodoro }: ClockProps) {
             rx="272"
             ry="46"
             fill="none"
-            stroke="var(--color-hairline)"
-            strokeWidth="2.2"
+            stroke="var(--color-dial)"
+            strokeWidth="2.4"
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
             opacity="0.9"
           />
           <ellipse
+            ref={ringRef}
             cx="280"
             cy="50"
             rx="272"
             ry="46"
             fill="none"
-            stroke={`color-mix(in srgb, ${hexTime} 55%, transparent)`}
-            strokeWidth="2.8"
+            stroke={`color-mix(in srgb, ${hexTime} 60%, white)`}
+            strokeWidth="3.2"
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
             pathLength={100}
             strokeDasharray="100"
-            strokeDashoffset={ringOffset}
-            style={{ transition: 'stroke-dashoffset 800ms linear, stroke 600ms ease' }}
+            strokeDashoffset="100"
+            style={{
+              filter: `drop-shadow(0 0 5px color-mix(in srgb, ${hexTime} 50%, transparent))`,
+              transition: 'stroke 600ms ease',
+            }}
           />
         </svg>
 
@@ -124,7 +138,10 @@ export default function Clock({ now, use12h, hexTime, pomodoro }: ClockProps) {
       <div className="relative z-10 mt-[0.9em] flex flex-col items-center gap-2">
         <HexBadge hex={hexTime} />
         {pomodoro?.active && (
-          <span className="eyebrow rounded-sm border border-hairline bg-enclosure/70 px-2.5 py-1 text-dim">
+          <span
+            data-testid="phase-chip"
+            className="eyebrow rounded-sm border border-hairline bg-enclosure/70 px-2.5 py-1 text-dim"
+          >
             {MODE_LABELS[pomodoro.mode].toUpperCase()} · {pomodoro.remaining}
           </span>
         )}
