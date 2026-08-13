@@ -97,7 +97,7 @@ export default function App() {
       <header className="relative z-10 flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6">
         <div className="flex items-center gap-3">
           <span aria-hidden className="led-dot inline-block h-1.5 w-1.5 rounded-full" />
-          <span className="eyebrow text-phosphor">Big Clock</span>
+          <span className="eyebrow text-phosphor">The Color of Time</span>
         </div>
         <div className="flex items-center gap-2">
           <FormatToggle use12h={use12h} onChange={setUse12h} />
